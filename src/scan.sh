@@ -56,7 +56,7 @@ function main() {
     # 0. Run server to start page
     if [[ "${INTERACTIVE_MODE}" == "true" ]]; then
         set_status "0" "Server started"
-        (cd "$BASE_DIR/src" && flask --app bin.webapp run) &
+        (cd "$BASE_DIR/src" && python -m debugpy --listen 0.0.0.0:5678 -m flask --app bin.webapp run) &
     fi
 
     python3 -m src.bin.epss_db_builder &

@@ -4,3 +4,5 @@ services:
     volumes:
       # You need to mount the source code on actual source code path with "../../src:/scan/src:Z"
       - ../../src:/scan/src:Z
+    ports:
+      - "5678:5678"
