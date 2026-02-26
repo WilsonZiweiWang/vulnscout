@@ -85,6 +85,7 @@ env.bak/
 venv.bak/
 
 # Vulnscout files
+.vulnscout/projects/
 .vulnscout/example/output/
 .vulnscout/example-spdx3/output/
 .vulnscout/cache/

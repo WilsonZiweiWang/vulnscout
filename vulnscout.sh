@@ -25,7 +25,7 @@ show_help() {
   echo "Usage: ./vulnscout.sh --name <project_name> [--option]"
   echo ""
   echo "Mandatory argument:"
-  echo "  --name <project_name> name of the sub folder entry in .vulnscout/"
+  echo "  --name <project_name> name of the sub folder entry in .vulnscout/projects/"
   echo ""
   echo "Extra Vulnscout configuration:"
   echo "  --workdir_path <path>   (default: current directory) Path to vulnscout installation"
@@ -341,7 +341,7 @@ if [ ! -z "$VULNSCOUT_TEMPLATE" ]; then
 fi
 
 # Create paths and yaml file variable
-VULNSCOUT_COMBINED_PATH="$VULNSCOUT_PATH/$VULNSCOUT_ENTRY_NAME"
+VULNSCOUT_COMBINED_PATH="$VULNSCOUT_PATH/projects/$VULNSCOUT_ENTRY_NAME"
 YAML_FILE="$VULNSCOUT_COMBINED_PATH/docker-$VULNSCOUT_ENTRY_NAME.yml"
 
 check_compose_provider_command() {
@@ -365,9 +365,9 @@ create_yaml_file(){
         exit 1
     fi
 
-    if [ ! -d "$VULNSCOUT_PATH/$VULNSCOUT_ENTRY_NAME" ]; then
-        echo "Creating: Directory '$VULNSCOUT_PATH/$VULNSCOUT_ENTRY_NAME'"
-        mkdir -p "$VULNSCOUT_PATH/$VULNSCOUT_ENTRY_NAME"
+    if [ ! -d "$VULNSCOUT_PATH/projects/$VULNSCOUT_ENTRY_NAME" ]; then
+        echo "Creating: Directory '$VULNSCOUT_PATH/projects/$VULNSCOUT_ENTRY_NAME'"
+        mkdir -p "$VULNSCOUT_PATH/projects/$VULNSCOUT_ENTRY_NAME"
     fi
 
     if [ ! -f "$YAML_FILE" ]; then
