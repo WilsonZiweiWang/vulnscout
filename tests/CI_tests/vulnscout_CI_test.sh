@@ -1,6 +1,6 @@
 #!/bin/bash
 BASE_DIR=$PWD/../../
-VULNSCOUT_DIR=.vulnscout/test_ci/output
+VULNSCOUT_DIR=.vulnscout/projects/test_ci/output
 OUPUT_CI_FILES=("time_estimates.csv" "time_estimates.json" "openvex.json" "sbom.cdx.json" "sbom.spdx.json" "summary.adoc" "sbom.spdx3.json")
 OUPUT_CI_FILES_SORT=($(printf '%s\n' "${OUPUT_CI_FILES[@]}" | sort))
 
@@ -21,7 +21,7 @@ fi
 	--fail_condition "cvss >= 11.0"
 if [ $? -eq 0 ]; then
 	echo "**Checking output files**"
-	check_output_files=( $(find $VULNSCOUT_DIR -type f | cut -d'/' -f4) )
+	check_output_files=( $(find "$VULNSCOUT_DIR" -type f -printf '%f\n') )
 	output_files_sort=($(printf '%s\n' "${check_output_files[@]}" | sort))
 	if [ "${output_files_sort[*]}" == "${OUPUT_CI_FILES_SORT[*]}" ]; then
 		echo "**Output files correctly created**"
