@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) 
 - `vulnscout.sh` (SPDX2): fixed "Read-only file system" error on archived files.
 - `vulnscout.sh`: Renamed `--sbom` to `--spdx`.
 - `vulnscout.sh`: Fixed inaccurate return code when using Podman.
+- `vulnscout.sh`: Project run directories are now created under `.vulnscout/projects/<name>/`.
 ---
 
 ## [0.10.0] - 2026-02-06

@@ -105,7 +105,7 @@ If you want to use the non-interactive mode, without the web interface, you can 
 
 To use VulnScout, you only need a Software Bill of Materials *(SBOM)* file in SPDX or CycloneDX format. +
 The Grype scanner will analyse the SBOM for vulnerabilities; if it already includes some, those will be merged into the final results. +
-To do so, create a new sub-folder in _.vulnscout_ and place a modified `yaml` using your configuration. +
+To do so, create a new sub-folder in _.vulnscout/projects_ and place a modified `yaml` using your configuration. +
 To configure your `yaml` file, you can look at the example provided here _.vulnscout/example/docker-example.yml_
 
 ===== Tips for Editing your `yaml` file
