@@ -290,13 +290,7 @@ const dt_options: Intl.DateTimeFormatOptions = {
                 } else {
                     onClose();
                 }
-            } else if (event.key === 'ArrowLeft' && canNavigatePrevious) {
-                event.preventDefault();
-                navigateTo(currentIndex! - 1);
-            } else if (event.key === 'ArrowRight' && canNavigateNext) {
-                event.preventDefault();
-                navigateTo(currentIndex! + 1);
-            }
+            } 
         };
 
         document.addEventListener('keydown', handleKeyDown);
