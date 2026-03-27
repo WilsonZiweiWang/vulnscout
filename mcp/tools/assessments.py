@@ -31,6 +31,8 @@ def _write_assessment_impl(
 
     try:
         result = client.write_assessment(vuln_id, payload)
+        if "assessment" not in result:
+            return str(result)
         a = result.get("assessment", {})
         return (
             f"Assessment created: id={a.get('id')}, "
@@ -57,6 +59,11 @@ def register_tools(server, client: VulnScoutClient) -> None:
         timestamp: Optional[str] = None,
     ) -> str:
         """Write a VEX assessment for a CVE on one or more packages in VulnScout.
+
+        Returns a success summary when the API response includes an `assessment`
+        object. If the response does not include `assessment`, the call is treated
+        as failed and the raw response payload is returned instead. Client errors
+        are returned as an `Error: ...` string.
 
         Args:
             vuln_id: CVE identifier, e.g. CVE-2024-1234
