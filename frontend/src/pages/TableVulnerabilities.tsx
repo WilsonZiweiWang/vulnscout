@@ -314,7 +314,7 @@ function TableVulnerabilities ({ vulnerabilities, filterLabel, filterValue, appe
     const [showMoreFilters, setShowMoreFilters] = useState(false);
     const [refreshStatus, setRefreshStatus] = useState<{
         running: boolean;
-        progress: number | null;
+        progress: string | null;
         total: number | null;
         error: string | null;
     } | null>(null);
@@ -1471,8 +1471,8 @@ function TableVulnerabilities ({ vulnerabilities, filterLabel, filterValue, appe
                     <span>
                         <FontAwesomeIcon icon={faRotate} className="animate-spin mr-2" />
                         Refreshing CVEs from NVD…
-                        {refreshStatus.total !== null && refreshStatus.progress !== null && (
-                            <span className="ml-2">{refreshStatus.progress}/{refreshStatus.total}</span>
+                        {refreshStatus.progress !== null && (
+                            <span className="ml-2">{refreshStatus.progress}</span>
                         )}
                     </span>
                 )}
