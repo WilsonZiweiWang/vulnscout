@@ -41,6 +41,50 @@ def build_cpe_map(
     return cpe_to_cves
 
 
+def _update_cvss_metrics(vulnerability_id: str, details: dict) -> bool:
+    """Update the Metrics table from NVD CVSS data in *details*.
+
+    Finds the existing Metrics row matching *details["cvss_version"]* and
+    patches score/vector/author when different; creates a new row if none
+    exists.  Uses db.session.add() / direct attribute mutation without an
+    inner commit — the caller is responsible for committing.
+    Returns True when any metric was added or changed.
+    """
+    new_score = details.get("base_score")
+    new_version = details.get("cvss_version")
+    new_vector = details.get("cvss_vector")
+
+    if new_score is None or new_version is None:
+        return False
+
+    from ..models.metrics import Metrics
+    from ..extensions import db
+
+    existing = Metrics.get_by_vulnerability(vulnerability_id)
+    matched = next((m for m in existing if m.version == new_version), None)
+
+    if matched is None:
+        db.session.add(Metrics(
+            vulnerability_id=vulnerability_id.upper(),
+            version=new_version,
+            score=new_score,
+            vector=new_vector,
+            author="NVD",
+        ))
+        return True
+
+    changed = False
+    if float(matched.score or 0) != float(new_score):
+        matched.score = new_score
+        changed = True
+    if new_vector and matched.vector != new_vector:
+        matched.vector = new_vector
+        changed = True
+    if changed:
+        matched.author = "NVD"
+    return changed
+
+
 def apply_nvd_update(vuln_record, details: dict, now: datetime.datetime) -> bool:
     """Compare NVD *details* against *vuln_record* and update in place if different.
 
@@ -65,7 +109,9 @@ def apply_nvd_update(vuln_record, details: dict, now: datetime.datetime) -> bool
         if new_val is not None and new_val != getattr(vuln_record, model_attr):
             update_kwargs[model_attr] = new_val
 
-    if not update_kwargs:
+    cvss_changed = _update_cvss_metrics(str(vuln_record.id), details)
+
+    if not update_kwargs and not cvss_changed:
         vuln_record.update_record(nvd_fetched_at=now, commit=False)
         return False
 

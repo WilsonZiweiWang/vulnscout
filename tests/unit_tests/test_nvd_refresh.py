@@ -3,12 +3,13 @@
 
 import datetime
 import uuid
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from src.controllers.nvd_refresh import (
     build_cpe_map,
     apply_nvd_update,
     collect_target_cve_ids,
+    _update_cvss_metrics,
 )
 
 
@@ -191,3 +192,94 @@ def test_collect_target_cve_ids_explicit_list_already_uppercase():
     """Already-uppercased IDs pass through unchanged."""
     result = collect_target_cve_ids(None, None, ["CVE-2024-1234"])
     assert result == ["CVE-2024-1234"]
+
+
+# ---------------------------------------------------------------------------
+# _update_cvss_metrics
+# ---------------------------------------------------------------------------
+
+@patch("src.models.metrics.Metrics.get_by_vulnerability", return_value=[])
+@patch("src.extensions.db")
+def test_update_cvss_metrics_creates_new_record_when_none_exists(mock_db, mock_get):
+    """When no Metrics row exists for the version, a new one is added to the session."""
+    details = {"base_score": 7.4, "cvss_version": "3.1", "cvss_vector": "CVSS:3.1/AV:N/AC:H"}
+    result = _update_cvss_metrics("CVE-2024-0001", details)
+    assert result is True
+    mock_db.session.add.assert_called_once()
+
+
+@patch("src.extensions.db")
+def test_update_cvss_metrics_updates_score_when_different(mock_db):
+    """Existing Metrics row with a different score is updated in place."""
+    existing = MagicMock(version="3.1", score=5.0, vector="CVSS:3.1/AV:L/AC:L", author="unknown")
+    with patch("src.models.metrics.Metrics.get_by_vulnerability", return_value=[existing]):
+        details = {"base_score": 7.4, "cvss_version": "3.1", "cvss_vector": "CVSS:3.1/AV:N/AC:H"}
+        result = _update_cvss_metrics("CVE-2024-0001", details)
+    assert result is True
+    assert existing.score == 7.4
+    assert existing.vector == "CVSS:3.1/AV:N/AC:H"
+    assert existing.author == "NVD"
+
+
+@patch("src.extensions.db")
+def test_update_cvss_metrics_returns_false_when_score_unchanged(mock_db):
+    """No change when score and vector already match NVD data."""
+    existing = MagicMock(version="3.1", score=7.4, vector="CVSS:3.1/AV:N/AC:H", author="NVD")
+    with patch("src.models.metrics.Metrics.get_by_vulnerability", return_value=[existing]):
+        details = {"base_score": 7.4, "cvss_version": "3.1", "cvss_vector": "CVSS:3.1/AV:N/AC:H"}
+        result = _update_cvss_metrics("CVE-2024-0001", details)
+    assert result is False
+    mock_db.session.add.assert_not_called()
+
+
+def test_update_cvss_metrics_returns_false_when_no_score_in_details():
+    """Missing base_score/cvss_version in details → skip without touching DB."""
+    result = _update_cvss_metrics("CVE-2024-0001", {"description": "no score here"})
+    assert result is False
+
+
+# ---------------------------------------------------------------------------
+# apply_nvd_update — CVSS integration
+# ---------------------------------------------------------------------------
+
+@patch("src.controllers.nvd_refresh._update_cvss_metrics", return_value=True)
+def test_apply_nvd_update_returns_true_when_only_cvss_changes(mock_cvss):
+    """When only CVSS score changed (all scalar fields equal), result is True
+    and nvd_data_updated_at is stamped."""
+    vuln = _make_vuln()
+    now = datetime.datetime.now(datetime.timezone.utc)
+    details = {
+        "description": vuln.description,
+        "status": vuln.status,
+        "links": vuln.links,
+        "weaknesses": vuln.weaknesses,
+        "publish_date": vuln.publish_date,
+        "attack_vector": vuln.attack_vector,
+        "nvd_last_modified": vuln.nvd_last_modified,
+        "base_score": 9.8,
+        "cvss_version": "3.1",
+    }
+    changed = apply_nvd_update(vuln, details, now)
+    assert changed is True
+    kwargs = vuln.update_record.call_args[1]
+    assert kwargs["nvd_data_updated_at"] == now
+    assert kwargs["nvd_fetched_at"] == now
+
+
+@patch("src.controllers.nvd_refresh._update_cvss_metrics", return_value=False)
+def test_apply_nvd_update_returns_false_when_cvss_unchanged(mock_cvss):
+    """When no scalar fields and no CVSS changed, result is False."""
+    vuln = _make_vuln()
+    now = datetime.datetime.now(datetime.timezone.utc)
+    details = {
+        "description": vuln.description,
+        "status": vuln.status,
+        "links": vuln.links,
+        "weaknesses": vuln.weaknesses,
+        "publish_date": vuln.publish_date,
+        "attack_vector": vuln.attack_vector,
+        "nvd_last_modified": vuln.nvd_last_modified,
+    }
+    changed = apply_nvd_update(vuln, details, now)
+    assert changed is False
+    vuln.update_record.assert_called_once_with(nvd_fetched_at=now, commit=False)
