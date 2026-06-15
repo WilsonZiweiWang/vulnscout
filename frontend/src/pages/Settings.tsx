@@ -276,11 +276,16 @@ function Settings({ onDataChanged, onLoadingMessage }: Readonly<Props>) {
     try {
       const ctx = await Variants.getContext(variantId);
       if (unmountedRef.current) return;
-      setContextForm({
-        deployment_environment: ctx.deployment_environment,
-        platform: ctx.platform,
-        objectives_profile: ctx.objectives_profile,
-        notes: ctx.notes,
+      // Bail if the user selected a different variant while this fetch was in-flight
+      setContextVariantId((current) => {
+        if (current !== variantId) return current;
+        setContextForm({
+          deployment_environment: ctx.deployment_environment,
+          platform: ctx.platform,
+          objectives_profile: ctx.objectives_profile,
+          notes: ctx.notes,
+        });
+        return current;
       });
     } catch (e: any) {
       if (unmountedRef.current) return;
@@ -703,6 +708,10 @@ function Settings({ onDataChanged, onLoadingMessage }: Readonly<Props>) {
                   setDeleteVariantId("");
                   setVariantMsg(null);
                   setConfirmDeleteVariant(false);
+                  setContextVariantId("");
+                  setContextForm({ deployment_environment: null, platform: null, objectives_profile: null, notes: null });
+                  setContextMsg(null);
+                  setContextLoading(false);
                 }}
                 className={selectClass}
               >
@@ -841,7 +850,7 @@ function Settings({ onDataChanged, onLoadingMessage }: Readonly<Props>) {
                   value={contextVariantId}
                   onChange={(e) => handleContextVariantChange(e.target.value)}
                   className={selectClass}
-                  disabled={contextLoading}
+                  disabled={contextLoading || contextBusy}
                 >
                   <option value="">— select a variant —</option>
                   {variantProjectVariants.map((v) => (
