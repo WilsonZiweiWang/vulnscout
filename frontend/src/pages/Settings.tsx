@@ -17,7 +17,7 @@ import {
 import Projects from "../handlers/project";
 import type { Project } from "../handlers/project";
 import Variants from "../handlers/variant";
-import type { Variant } from "../handlers/variant";
+import type { Variant, VariantContext } from "../handlers/variant";
 import Config from "../handlers/config";
 import ConfirmationModal from "../components/ConfirmationModal";
 import MessageBanner from "../components/MessageBanner";
@@ -192,6 +192,16 @@ function Settings({ onDataChanged, onLoadingMessage }: Readonly<Props>) {
   const [deleteVariantId, setDeleteVariantId] = useState<string>("");
   const [confirmDeleteVariant, setConfirmDeleteVariant] = useState(false);
   const [deleteVariantBusy, setDeleteVariantBusy] = useState(false);
+  const [contextVariantId, setContextVariantId] = useState<string>("");
+  const [contextForm, setContextForm] = useState<Omit<VariantContext, "variant_id">>({
+    deployment_environment: null,
+    platform: null,
+    objectives_profile: null,
+    notes: null,
+  });
+  const [contextLoading, setContextLoading] = useState(false);
+  const [contextBusy, setContextBusy] = useState(false);
+  const [contextMsg, setContextMsg] = useState<{ text: string; type: "success" | "error" } | null>(null);
 
   const reloadVariants = useCallback((projectId: string) => {
     if (!projectId) { setVariantProjectVariants([]); return; }
@@ -254,6 +264,45 @@ function Settings({ onDataChanged, onLoadingMessage }: Readonly<Props>) {
       setConfirmDeleteVariant(false);
     } finally {
       setDeleteVariantBusy(false);
+    }
+  };
+
+  const handleContextVariantChange = async (variantId: string) => {
+    setContextVariantId(variantId);
+    setContextMsg(null);
+    setContextForm({ deployment_environment: null, platform: null, objectives_profile: null, notes: null });
+    if (!variantId) return;
+    setContextLoading(true);
+    try {
+      const ctx = await Variants.getContext(variantId);
+      if (unmountedRef.current) return;
+      setContextForm({
+        deployment_environment: ctx.deployment_environment,
+        platform: ctx.platform,
+        objectives_profile: ctx.objectives_profile,
+        notes: ctx.notes,
+      });
+    } catch (e: any) {
+      if (unmountedRef.current) return;
+      setContextMsg({ text: e?.message || "Failed to load context.", type: "error" });
+    } finally {
+      if (!unmountedRef.current) setContextLoading(false);
+    }
+  };
+
+  const handleSaveContext = async () => {
+    if (!contextVariantId || contextBusy) return;
+    setContextBusy(true);
+    setContextMsg(null);
+    try {
+      await Variants.updateContext(contextVariantId, contextForm);
+      if (unmountedRef.current) return;
+      setContextMsg({ text: "Context saved.", type: "success" });
+    } catch (e: any) {
+      if (unmountedRef.current) return;
+      setContextMsg({ text: e?.message || "Failed to save context.", type: "error" });
+    } finally {
+      if (!unmountedRef.current) setContextBusy(false);
     }
   };
 
@@ -772,6 +821,146 @@ function Settings({ onDataChanged, onLoadingMessage }: Readonly<Props>) {
                     Delete
                   </button>
                 </div>
+              </div>
+            )}
+
+            {/* -- Edit variant context -- */}
+            {variantProjectId && (
+              <div className="border-t border-zinc-600 pt-4 space-y-2">
+                <label
+                  htmlFor="context-variant-select"
+                  className="block text-sm text-zinc-300 font-semibold"
+                >
+                  Edit Variant Context
+                </label>
+                <p className="text-xs text-zinc-400">
+                  Context is used by AI assessment tools to understand the deployment environment.
+                </p>
+                <select
+                  id="context-variant-select"
+                  value={contextVariantId}
+                  onChange={(e) => handleContextVariantChange(e.target.value)}
+                  className={selectClass}
+                  disabled={contextLoading}
+                >
+                  <option value="">— select a variant —</option>
+                  {variantProjectVariants.map((v) => (
+                    <option key={v.id} value={v.id}>{v.name}</option>
+                  ))}
+                </select>
+
+                {contextLoading && (
+                  <p className="text-sm text-zinc-400">
+                    <FontAwesomeIcon icon={faSpinner} spin className="mr-1" aria-hidden="true" />
+                    Loading context...
+                  </p>
+                )}
+
+                {contextVariantId && !contextLoading && (
+                  <div className="space-y-2 pt-1">
+                    <div>
+                      <label htmlFor="ctx-platform" className="block text-xs text-zinc-400 mb-1">
+                        Platform
+                      </label>
+                      <input
+                        id="ctx-platform"
+                        type="text"
+                        value={contextForm.platform ?? ""}
+                        onChange={(e) =>
+                          setContextForm((p) => ({ ...p, platform: e.target.value || null }))
+                        }
+                        placeholder="e.g. yocto, npm, cargo, pip"
+                        className={inputClass}
+                        disabled={contextBusy}
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="ctx-objectives" className="block text-xs text-zinc-400 mb-1">
+                        Objectives Profile
+                      </label>
+                      <input
+                        id="ctx-objectives"
+                        type="text"
+                        value={contextForm.objectives_profile ?? ""}
+                        onChange={(e) =>
+                          setContextForm((p) => ({ ...p, objectives_profile: e.target.value || null }))
+                        }
+                        placeholder="e.g. default, yocto-runtime"
+                        className={inputClass}
+                        disabled={contextBusy}
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="ctx-env" className="block text-xs text-zinc-400 mb-1">
+                        Deployment Environment
+                      </label>
+                      <textarea
+                        id="ctx-env"
+                        rows={3}
+                        value={contextForm.deployment_environment ?? ""}
+                        onChange={(e) =>
+                          setContextForm((p) => ({
+                            ...p,
+                            deployment_environment: e.target.value || null,
+                          }))
+                        }
+                        placeholder="Describe the deployed system and its context..."
+                        className={inputClass + " resize-none"}
+                        disabled={contextBusy}
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="ctx-notes" className="block text-xs text-zinc-400 mb-1">
+                        Notes
+                      </label>
+                      <textarea
+                        id="ctx-notes"
+                        rows={3}
+                        value={contextForm.notes ?? ""}
+                        onChange={(e) =>
+                          setContextForm((p) => ({ ...p, notes: e.target.value || null }))
+                        }
+                        placeholder="Runtime constraints, scoping rules, exclusions..."
+                        className={inputClass + " resize-none"}
+                        disabled={contextBusy}
+                      />
+                    </div>
+                    <div className="flex items-center gap-3 pt-1">
+                      <button
+                        onClick={handleSaveContext}
+                        disabled={contextBusy}
+                        className={btnPrimary}
+                        aria-busy={contextBusy}
+                      >
+                        {contextBusy ? (
+                          <FontAwesomeIcon icon={faSpinner} spin className="mr-1" aria-hidden="true" />
+                        ) : (
+                          <FontAwesomeIcon icon={faCheck} className="mr-1" aria-hidden="true" />
+                        )}
+                        Save Context
+                      </button>
+                      {contextMsg && (
+                        <span
+                          role="alert"
+                          className={
+                            contextMsg.type === "success"
+                              ? "text-emerald-400 text-sm"
+                              : "text-red-400 text-sm"
+                          }
+                        >
+                          {contextMsg.type === "error" && (
+                            <FontAwesomeIcon
+                              icon={faTriangleExclamation}
+                              className="mr-1"
+                              aria-hidden="true"
+                            />
+                          )}
+                          {contextMsg.text}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
