@@ -4,7 +4,15 @@ type Variant = {
     project_id: string;
 };
 
-export type { Variant };
+type VariantContext = {
+    variant_id: string;
+    deployment_environment: string | null;
+    platform: string | null;
+    objectives_profile: string | null;
+    notes: string | null;
+};
+
+export type { Variant, VariantContext };
 
 class Variants {
     static async list(projectId: string): Promise<Variant[]> {
@@ -130,6 +138,38 @@ class Variants {
         );
         if (!response.ok) {
             return { status: "error", message: "Failed to check upload status." };
+        }
+        return response.json();
+    }
+
+    static async getContext(variantId: string): Promise<VariantContext> {
+        const response = await fetch(
+            import.meta.env.VITE_API_URL + `/api/variants/${encodeURIComponent(variantId)}/context`,
+            { mode: "cors" }
+        );
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.error || `Get context failed (${response.status})`);
+        }
+        return response.json();
+    }
+
+    static async updateContext(
+        variantId: string,
+        ctx: Partial<Omit<VariantContext, "variant_id">>
+    ): Promise<VariantContext> {
+        const response = await fetch(
+            import.meta.env.VITE_API_URL + `/api/variants/${encodeURIComponent(variantId)}/context`,
+            {
+                mode: "cors",
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(ctx),
+            }
+        );
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.error || `Update context failed (${response.status})`);
         }
         return response.json();
     }
