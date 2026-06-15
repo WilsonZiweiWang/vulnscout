@@ -133,3 +133,8 @@ class TestUpdateVariantContext:
         assert data["platform"] == "npm"
         assert data["notes"] == "web app"
         assert data["deployment_environment"] is None
+
+    def test_non_string_field_value_returns_400(self, client):
+        vid = _get_default_variant_id(client)
+        resp = client.put(f"/api/variants/{vid}/context", json={"platform": 123})
+        assert resp.status_code == 400

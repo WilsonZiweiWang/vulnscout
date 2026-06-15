@@ -89,3 +89,28 @@ def test_update_context_sequential_accumulates(variant):
     assert variant.platform == "npm"
     assert variant.objectives_profile == "default"
     assert variant.deployment_environment is None
+
+
+def test_update_context_non_string_value_raises(variant):
+    with pytest.raises(ValueError, match="must be a string or null"):
+        VariantController.update_context(variant, {"platform": 123})
+
+
+def test_update_context_null_value_is_allowed(variant):
+    VariantController.update_context(variant, {"platform": None})
+    assert variant.platform is None
+
+
+def test_update_context_platform_too_long_raises(variant):
+    with pytest.raises(ValueError, match="exceeds maximum length"):
+        VariantController.update_context(variant, {"platform": "x" * 101})
+
+
+def test_update_context_objectives_profile_too_long_raises(variant):
+    with pytest.raises(ValueError, match="exceeds maximum length"):
+        VariantController.update_context(variant, {"objectives_profile": "y" * 101})
+
+
+def test_update_context_platform_at_max_length_succeeds(variant):
+    VariantController.update_context(variant, {"platform": "a" * 100})
+    assert variant.platform == "a" * 100

@@ -318,7 +318,7 @@ def init_app(app):
         if not isinstance(data, dict):
             return jsonify({"error": "Request body must be a JSON object."}), 400
         try:
-            updated = VariantController.update_context(variant, data)
+            updated = _retry_on_lock(lambda: VariantController.update_context(variant, data))
         except ValueError as e:
             return jsonify({"error": str(e)}), 400
         return jsonify(VariantController.get_context(updated))

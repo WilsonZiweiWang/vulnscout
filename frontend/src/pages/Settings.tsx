@@ -255,6 +255,11 @@ function Settings({ onDataChanged, onLoadingMessage }: Readonly<Props>) {
         setRenameVariantId("");
         setRenameVariantName("");
       }
+      if (contextVariantId === deleteVariantId) {
+        setContextVariantId("");
+        setContextForm({ deployment_environment: null, platform: null, objectives_profile: null, notes: null });
+        setContextMsg(null);
+      }
       setDeleteVariantId("");
       setConfirmDeleteVariant(false);
       reloadVariants(variantProjectId);

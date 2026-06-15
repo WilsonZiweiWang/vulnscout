@@ -133,6 +133,15 @@ class VariantController:
         if unknown:
             raise ValueError(f"Unknown context fields: {sorted(unknown)}")
         for key, val in fields.items():
+            if val is not None and not isinstance(val, str):
+                raise ValueError(f"Field '{key}' must be a string or null.")
+        _MAX_LEN = {"platform": 100, "objectives_profile": 100}
+        for key, val in fields.items():
+            if val is not None and key in _MAX_LEN and len(val) > _MAX_LEN[key]:
+                raise ValueError(
+                    f"Field '{key}' exceeds maximum length of {_MAX_LEN[key]} characters."
+                )
+        for key, val in fields.items():
             setattr(variant, key, val)
         db.session.commit()
         return variant
