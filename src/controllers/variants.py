@@ -4,6 +4,7 @@
 import uuid
 from typing import Optional
 
+from ..extensions import db
 from ..models.variant import Variant
 from ._base import ensure_uuid, resolve_entity, validate_non_empty
 
@@ -110,7 +111,8 @@ class VariantController:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def get_context(variant: "Variant") -> dict:
+    def get_context(variant: Variant) -> dict:
+        """Return a JSON-serialisable dict of the context fields for *variant*."""
         return {
             "variant_id": str(variant.id),
             "deployment_environment": variant.deployment_environment,
@@ -120,12 +122,17 @@ class VariantController:
         }
 
     @staticmethod
-    def update_context(variant: "Variant", fields: dict) -> "Variant":
+    def update_context(variant: Variant, fields: dict) -> Variant:
+        """Partially update the context fields of *variant*.
+
+        Only keys present in *fields* are written; absent keys are unchanged.
+
+        :raises ValueError: if *fields* contains a key not in ``_CONTEXT_FIELDS``.
+        """
         unknown = set(fields) - _CONTEXT_FIELDS
         if unknown:
             raise ValueError(f"Unknown context fields: {sorted(unknown)}")
         for key, val in fields.items():
             setattr(variant, key, val)
-        from ..extensions import db
         db.session.commit()
         return variant
