@@ -294,6 +294,36 @@ def init_app(app):
         return _delete_entity(variant_id, VariantController, "variant ID", "Variant")
 
     # ------------------------------------------------------------------
+    # Variant context
+    # ------------------------------------------------------------------
+    @app.route('/api/variants/<variant_id>/context', methods=['GET'])
+    def get_variant_context(variant_id):
+        _, err = parse_uuid_or_400(variant_id, "variant ID")
+        if err:
+            return err
+        variant = VariantController.get(variant_id)
+        if variant is None:
+            return jsonify({"error": "Variant not found."}), 404
+        return jsonify(VariantController.get_context(variant))
+
+    @app.route('/api/variants/<variant_id>/context', methods=['PUT'])
+    def update_variant_context(variant_id):
+        _, err = parse_uuid_or_400(variant_id, "variant ID")
+        if err:
+            return err
+        variant = VariantController.get(variant_id)
+        if variant is None:
+            return jsonify({"error": "Variant not found."}), 404
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict):
+            return jsonify({"error": "Request body must be a JSON object."}), 400
+        try:
+            updated = VariantController.update_context(variant, data)
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+        return jsonify(VariantController.get_context(updated))
+
+    # ------------------------------------------------------------------
     # Upload SBOM
     # ------------------------------------------------------------------
     @app.route('/api/sbom/upload', methods=['POST'])
