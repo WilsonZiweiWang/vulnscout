@@ -7,6 +7,10 @@ from typing import Optional
 from ..models.variant import Variant
 from ._base import ensure_uuid, resolve_entity, validate_non_empty
 
+_CONTEXT_FIELDS = frozenset({
+    "deployment_environment", "platform", "objectives_profile", "notes"
+})
+
 
 class VariantController:
     """
@@ -100,3 +104,28 @@ class VariantController:
         """
         resolved = resolve_entity(variant, VariantController.get, "Variant")
         resolved.delete()
+
+    # ------------------------------------------------------------------
+    # Context
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def get_context(variant: "Variant") -> dict:
+        return {
+            "variant_id": str(variant.id),
+            "deployment_environment": variant.deployment_environment,
+            "platform": variant.platform,
+            "objectives_profile": variant.objectives_profile,
+            "notes": variant.notes,
+        }
+
+    @staticmethod
+    def update_context(variant: "Variant", fields: dict) -> "Variant":
+        unknown = set(fields) - _CONTEXT_FIELDS
+        if unknown:
+            raise ValueError(f"Unknown context fields: {sorted(unknown)}")
+        for key, val in fields.items():
+            setattr(variant, key, val)
+        from ..extensions import db
+        db.session.commit()
+        return variant
