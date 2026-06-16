@@ -58,6 +58,11 @@ class VariantController:
         """Return all variants belonging to *project_id*, ordered by name."""
         return Variant.get_by_project(ensure_uuid(project_id))
 
+    @staticmethod
+    def get_by_name_and_project(name: str, project_id: uuid.UUID | str) -> Optional[Variant]:
+        """Return the variant matching *name* under *project_id*, or ``None``."""
+        return Variant.get_by_name_and_project(name, ensure_uuid(project_id))
+
     # ------------------------------------------------------------------
     # Mutations
     # ------------------------------------------------------------------

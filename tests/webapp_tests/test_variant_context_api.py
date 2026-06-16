@@ -1,7 +1,7 @@
 # Copyright (C) 2026 Savoir-faire Linux, Inc.
 # SPDX-License-Identifier: GPL-3.0-only
 
-"""Integration tests for GET/PUT /api/variants/<id>/context."""
+"""Integration tests for GET/PUT /api/variants/<id>/context and GET /api/variants/context."""
 
 import os
 import uuid
@@ -138,3 +138,46 @@ class TestUpdateVariantContext:
         vid = _get_default_variant_id(client)
         resp = client.put(f"/api/variants/{vid}/context", json={"platform": 123})
         assert resp.status_code == 400
+
+
+class TestGetVariantContextByName:
+
+    def test_missing_project_name_returns_400(self, client):
+        resp = client.get("/api/variants/context?variant_name=default")
+        assert resp.status_code == 400
+        assert "project_name" in resp.get_json()["error"]
+
+    def test_missing_variant_name_returns_400(self, client):
+        resp = client.get("/api/variants/context?project_name=demo")
+        assert resp.status_code == 400
+        assert "variant_name" in resp.get_json()["error"]
+
+    def test_unknown_project_returns_404(self, client):
+        resp = client.get("/api/variants/context?project_name=no-such&variant_name=default")
+        assert resp.status_code == 404
+        assert "no-such" in resp.get_json()["error"]
+
+    def test_unknown_variant_returns_404(self, client):
+        resp = client.get("/api/variants/context?project_name=demo&variant_name=no-such")
+        assert resp.status_code == 404
+        assert "no-such" in resp.get_json()["error"]
+
+    def test_returns_context_for_matching_variant(self, client):
+        resp = client.get("/api/variants/context?project_name=demo&variant_name=default")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert "variant_id" in data
+        assert "deployment_environment" in data
+        assert "platform" in data
+        assert "objectives_profile" in data
+        assert "notes" in data
+
+    def test_reflects_updated_context(self, client):
+        vid = _get_default_variant_id(client)
+        client.put(f"/api/variants/{vid}/context", json={"platform": "yocto", "notes": "test"})
+        resp = client.get("/api/variants/context?project_name=demo&variant_name=default")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["platform"] == "yocto"
+        assert data["notes"] == "test"
+        assert data["variant_id"] == vid
