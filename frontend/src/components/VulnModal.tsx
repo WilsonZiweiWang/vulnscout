@@ -23,7 +23,7 @@ import { formatSourceName } from '../helpers/sourceNames';
 import { useDocUrl } from '../helpers/useDocUrl';
 import { splitPkgId, formatPkgId, extractSupplierName } from '../helpers/pkgId';
 import type { Variant } from '../handlers/variant';
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import NvdRefreshHandler from "../handlers/nvdRefresh";
 import EpssRefreshHandler from "../handlers/epssRefresh";
 import GhsaRefreshHandler from "../handlers/ghsaRefresh";
@@ -690,7 +690,21 @@ type VariantScopedSnapshot = {
             .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     };
 
-    const groupedAssessments = groupAssessments(vuln.assessments);
+    // Source from allVulnAssessments (refetched on mount) so externally created
+    // assessments (via API calls) can appear without a
+    // full page reload. Fall back to vuln.assessments before the fetch resolves.
+    const scopedAssessments = useMemo(() => {
+        const source = allVulnAssessments.length > 0 ? allVulnAssessments : vuln.assessments;
+        if (variantId) {
+            return source.filter(a => !a.variant_id || a.variant_id === variantId);
+        }
+        if (projectId) {
+            const allowed = new Set(availableVariants.map(v => v.id));
+            return source.filter(a => !a.variant_id || allowed.has(a.variant_id));
+        }
+        return source;
+    }, [allVulnAssessments, vuln.assessments, variantId, projectId, availableVariants]);
+    const groupedAssessments = groupAssessments(scopedAssessments);
 
     const bothRefreshed = isGhsaVuln
         ? refreshedList.includes('GHSA')
